@@ -4,6 +4,7 @@ from sqlalchemy.orm import relationship
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin, login_user, LoginManager, login_required, current_user, logout_user
 import datetime
+import os
 
 db = SQLAlchemy()
 app = Flask(__name__)
@@ -62,6 +63,7 @@ class Todo(db.Model):
 
 @app.route("/")
 def home():
+
     if current_user.is_authenticated:
         return redirect(url_for("saved", user_id=current_user.id))
     else:
@@ -175,7 +177,9 @@ def new_list(list_id):
     db.session.commit()
     return redirect(url_for("new"))
 
+
 @app.route("/delete_list/<int:list_id>")
+@login_required
 def delete_list(list_id):
     todos = db.session.execute(db.select(Todo).filter_by(list_id=list_id)).scalars()
     for todo in todos.all():
@@ -211,9 +215,7 @@ def login():
     global is_dark
     list_id = request.args.get("list_id")
 
-
     if request.method == "POST":
-
 
         email = request.form.get("email")
         password = request.form.get("password")
@@ -248,7 +250,6 @@ def register():
     if request.method == "POST":
         list_id = request.form.get("list_id")
         if db.session.execute(db.select(User).filter_by(email=request.form.get("email"))).scalar():
-            # User already exists
             flash("You've already signed up with that email, log in instead!")
             return redirect(url_for("login"))
         hash_and_salted_password = generate_password_hash(
@@ -268,7 +269,8 @@ def register():
             list_to_add.user = current_user
             db.session.commit()
         return redirect(url_for("saved"))
-    return render_template("register.html", is_dark=is_dark, current_user=current_user, path=get_path(), list_id=list_id)
+    return render_template("register.html", is_dark=is_dark, current_user=current_user,
+                           path=get_path(), list_id=list_id)
 
 
 @app.route("/change_list_name/", methods=["POST"])
@@ -333,7 +335,9 @@ def change_password():
     else:
         return render_template("password.html", is_dark=is_dark, current_user=current_user, path=get_path())
 
+
 @app.route("/logout")
+@login_required
 def logout():
     logout_user()
     return redirect(url_for("home"))

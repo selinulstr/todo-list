@@ -16,16 +16,16 @@ p {
     color: #0d6efd;
 }
 
-.list-name::placeholder { /* Chrome, Firefox, Opera, Safari 10.1+ */
+.list-name::placeholder {
     color: #0d6efd;
-  opacity: 1; /* Firefox */
+  opacity: 1;
 }
 
-.list-name:-ms-input-placeholder { /* Internet Explorer 10-11 */
+.list-name:-ms-input-placeholder {
 color: #0d6efd;
 }
 
-.list-name::-ms-input-placeholder { /* Microsoft Edge */
+.list-name::-ms-input-placeholder {
 color: #0d6efd;
 }
 
@@ -50,7 +50,33 @@ color: #0d6efd;
 }
 .hid-done {
     visibility: hidden;
+
 }
+
+.google-img {
+
+width: 40px;
+height: 40px;
+}
+
+.google {
+flex-direction: row;
+display: flex;
+justify-content: center;
+align-items: center;
+padding: 7px;
+border-radius: 15px;
+text-decoration: none;
+
+}
+
+.google-text {
+justify-content: center;
+padding: 10px;
+}
+
+
+
 .form-div {
     height: 80%;
 }
@@ -97,38 +123,32 @@ color: #0d6efd;
 }
 
 .sidenav {
-  height: 100%; /* Full-height: remove this if you want "auto" height */
-  width: 160px; /* Set the width of the sidebar */
-  position: fixed; /* Fixed Sidebar (stay in place on scroll) */
-  z-index: 1; /* Stay on top */
-  top: 0; /* Stay at the top */
+  height: 100%;
+  width: 160px;
+  position: fixed;
+  z-index: 1;
+  top: 0;
   left: 0;
-  background-color: #111; /* Black */
-  overflow-x: hidden; /* Disable horizontal scroll */
+
+  overflow-x: hidden;
   padding-top: 20px;
 }
 
-/* The navigation menu links */
+
 .sidenav a {
   padding: 6px 8px 6px 16px;
   text-decoration: none;
-  font-size: 25px;
-  color: #818181;
+  font-size: 20px;
   display: block;
 }
 
-/* When you mouse over the navigation links, change their color */
-.sidenav a:hover {
-  color: #f1f1f1;
-}
 
-/* Style page content */
 .main, .navbarr {
-  margin-left: 160px; /* Same as the width of the sidebar */
-  padding: 0px 10px;
+  margin-left: 160px;
+  padding: 0px;
 }
 
-/* On smaller screens, where height is less than 450px, change the style of the sidebar (less padding and a smaller font size) */
+
 @media screen and (max-height: 450px) {
   .sidenav {padding-top: 15px;}
   .sidenav a {font-size: 18px;}

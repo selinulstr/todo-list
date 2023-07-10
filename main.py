@@ -8,7 +8,7 @@ import os
 
 db = SQLAlchemy()
 app = Flask(__name__)
-app.config["SECRET_KEY"] = "secret-key-goes-here"
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY")
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///todo.db"
 db.init_app(app)
 

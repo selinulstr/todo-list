@@ -54,25 +54,24 @@ color: #0d6efd;
 }
 
 .google-img {
-
-width: 40px;
-height: 40px;
+    width: 40px;
+    height: 40px;
 }
 
 .google {
-flex-direction: row;
-display: flex;
-justify-content: center;
-align-items: center;
-padding: 7px;
-border-radius: 15px;
-text-decoration: none;
+    flex-direction: row;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 7px;
+    border-radius: 15px;
+    text-decoration: none;
 
 }
 
 .google-text {
-justify-content: center;
-padding: 10px;
+    justify-content: center;
+    padding: 10px;
 }
 
 
@@ -151,6 +150,6 @@ padding: 10px;
 
 @media screen and (max-height: 450px) {
   .sidenav {padding-top: 15px;}
-  .sidenav a {font-size: 18px;}
+  .sidenav a {font-size: 15px;}
 }
 

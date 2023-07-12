@@ -121,6 +121,9 @@ color: #0d6efd;
 
 }
 
+.saved-lists {
+text-decoration: none;
+}
 .sidenav {
   height: 100%;
   width: 160px;

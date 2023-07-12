@@ -50,7 +50,18 @@
     {% endwith %}
 
 <div class="d-flex justify-content-center mb-2">
-            <a href="google/" class="btn btn-outline-primary google">
+    {% if list_id: %}
+
+            <a href="/save_list_for_google/{{list_id}}" class="btn btn-outline-primary google">
+                <img class="google-img" src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/Google_%22G%22_Logo.svg/2048px-Google_%22G%22_Logo.svg.png"
+            alt="Google"
+            >
+            <div class="google-text">
+                Login with Google
+            </div>
+            </a>
+    {% else: %}
+     <a href="google/" class="btn btn-outline-primary google">
                 <img class="google-img" id="google" src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/Google_%22G%22_Logo.svg/2048px-Google_%22G%22_Logo.svg.png"
             alt="Google"
             >
@@ -58,6 +69,7 @@
                 Login with Google
             </div>
             </a>
+    {% endif %}
     </div>
 
     <div class="form-floating">

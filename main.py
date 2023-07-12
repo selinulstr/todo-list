@@ -3,6 +3,8 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import relationship
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin, login_user, LoginManager, login_required, current_user, logout_user
+from authlib.integrations.flask_client import OAuth
+from authlib.common.security import generate_token
 import datetime
 import os
 
@@ -14,7 +16,7 @@ db.init_app(app)
 
 login_manager = LoginManager()
 login_manager.init_app(app)
-
+OAuth = OAuth(app)
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -24,10 +26,12 @@ def load_user(user_id):
 is_dark = False
 today = datetime.datetime.today().date().strftime("%d/%m/%Y")
 list_name = f"My to-do list {today}"
+first_google_list_id = None
 
 
 def get_path():
     return request.full_path
+
 
 class User(UserMixin, db.Model):
     __tablename__ = "users"
@@ -35,6 +39,7 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(100), unique=True)
     password = db.Column(db.String(100))
     name = db.Column(db.String(100))
+    login_with_google = db.Column(db.Boolean)
 
     all_lists = relationship("TodoList", back_populates="user")
     tasks = relationship("Todo", back_populates="user")
@@ -202,6 +207,11 @@ def save_list_for_new_user(list_id):
     return redirect(url_for("register", list_id=list_id))
 
 
+@app.route("/save_list_for_google/<int:list_id>")
+def save_list_for_google(list_id):
+    return redirect(url_for("google", list_id=list_id))
+
+
 @app.route("/new")
 def new():
     return render_template("index.html", today=today,
@@ -236,6 +246,8 @@ def login():
             if list_id:
                 list_to_add = db.get_or_404(TodoList, list_id)
                 list_to_add.user = current_user
+                for todo in list_to_add.tasks:
+                    todo.user_id = current_user.id
                 db.session.commit()
 
             return redirect(url_for("saved"))
@@ -261,12 +273,15 @@ def register():
         user.email = request.form.get("email")
         user.name = request.form.get("name")
         user.password = hash_and_salted_password
+        user.login_with_google = False
         db.session.add(user)
         db.session.commit()
         login_user(user)
         if list_id is not None:
             list_to_add = db.get_or_404(TodoList, list_id)
             list_to_add.user = current_user
+            for todo in list_to_add.tasks:
+                todo.user_id = current_user.id
             db.session.commit()
         return redirect(url_for("saved"))
     return render_template("register.html", is_dark=is_dark, current_user=current_user,
@@ -296,44 +311,49 @@ def saved():
 @login_required
 def account():
     global is_dark
+    if not current_user.login_with_google:
+        if request.method == "POST":
 
-    if request.method == "POST":
+            new_name = request.form.get("name")
 
-        new_name = request.form.get("name")
+            new_email = request.form.get("email")
+            if new_name != "":
+                current_user.name = new_name
+                db.session.commit()
 
-        new_email = request.form.get("email")
-        if new_name != "":
-            current_user.name = new_name
-            db.session.commit()
+            if new_email != "":
+                current_user.email = new_email
+                db.session.commit()
 
-        if new_email != "":
-            current_user.email = new_email
-            db.session.commit()
+            return redirect("/")
+        else:
 
-        return redirect("/")
+            return render_template("account.html", is_dark=is_dark, current_user=current_user, path=get_path())
     else:
-
-        return render_template("account.html", is_dark=is_dark, current_user=current_user, path=get_path())
+        return redirect("/")
 
 
 @app.route("/change_password", methods=["POST", "GET"])
 @login_required
 def change_password():
     global is_dark
-    if request.method == "POST":
+    if not current_user.login_with_google:
+        if request.method == "POST":
 
-        hash_and_salted_password = generate_password_hash(
-            request.form.get("password"),
-            method="pbkdf2:sha256",
-            salt_length=8
-        )
+            hash_and_salted_password = generate_password_hash(
+                request.form.get("password"),
+                method="pbkdf2:sha256",
+                salt_length=8
+            )
 
-        if request.form.get("password") != "":
-            current_user.password = hash_and_salted_password
-            db.session.commit()
-        return redirect("/")
+            if request.form.get("password") != "":
+                current_user.password = hash_and_salted_password
+                db.session.commit()
+            return redirect("/")
+        else:
+            return render_template("password.html", is_dark=is_dark, current_user=current_user, path=get_path())
     else:
-        return render_template("password.html", is_dark=is_dark, current_user=current_user, path=get_path())
+        return redirect("/")
 
 
 @app.route("/logout")
@@ -341,6 +361,69 @@ def change_password():
 def logout():
     logout_user()
     return redirect(url_for("home"))
+
+
+@app.route("/google/")
+def google():
+    global first_google_list_id
+    first_google_list_id = request.args.get("list_id")
+
+    GOOGLE_CLIENT_ID = os.environ.get("CLIENT_ID")
+    GOOGLE_CLIENT_SECRET = os.environ.get("CLIENT_SECRET")
+
+    CONF_URL = "https://accounts.google.com/.well-known/openid-configuration"
+    OAuth.register(
+        name="google",
+        client_id=GOOGLE_CLIENT_ID,
+        client_secret=GOOGLE_CLIENT_SECRET,
+        server_metadata_url=CONF_URL,
+        client_kwargs={
+            "scope": "openid email profile"
+        }
+    )
+
+    redirect_uri = url_for("google_auth", _external=True)
+    session["nonce"] = generate_token()
+    return OAuth.google.authorize_redirect(redirect_uri, nonce=session["nonce"])
+
+
+@app.route("/google/auth/")
+def google_auth():
+    global first_google_list_id
+
+    token = OAuth.google.authorize_access_token()
+    user = OAuth.google.parse_id_token(token, nonce=session["nonce"])
+    session["user"] = user
+
+    email = user["email"]
+    name = user["name"]
+    hash_and_salted_password = generate_password_hash(
+        user["nonce"],
+        method="pbkdf2:sha256",
+        salt_length=8
+    )
+    user_with_email = db.session.execute(db.select(User).filter_by(email=email)).scalar()
+    if user_with_email:
+        login_user(user_with_email)
+
+    else:
+        user = User()
+        user.email = email
+        user.name = name
+        user.password = hash_and_salted_password
+        user.login_with_google = True
+        db.session.add(user)
+        db.session.commit()
+        login_user(user)
+    if first_google_list_id is not None:
+        list_to_add = db.get_or_404(TodoList, first_google_list_id)
+        list_to_add.user = current_user
+        for todo in list_to_add.tasks:
+            todo.user_id = current_user.id
+        db.session.commit()
+        first_google_list_id = None
+
+    return redirect("/")
 
 
 if __name__ == "__main__":

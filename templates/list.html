@@ -44,11 +44,13 @@
           <a class="nav-link active fs-5 login-link" aria-current="page" href="/save_list/{{list_id}}">Log in</a>
               </li>
               {% else: %}
+          {% if not current_user.login_with_google: %}
              <li class="nav-item me-2">
           <a class="nav-link active fs-5" aria-current="page" href="/account" title="Click for account settings">
               {{current_user.email}}
               </a>
         </li>
+          {% endif %}
           <li class="nav-item me-2">
           <a class="nav-link fs-5" aria-current="page" href="/">My saved lists</a>
         </li>

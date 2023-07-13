@@ -82,7 +82,9 @@
     </div>
       {% if list_id: %}
     <input name="list_id" value="{{list_id}}" type="hidden">
-
+    <p>
+        <a href="/save_list_for_new_user/{{list_id}}" >Forgot your password?</a>
+    </p>
     <button class="btn btn-primary w-100 py-2 mb-3" type="submit">Log in</button>
       <h5>Not a member?
         <a href="/save_list_for_new_user/{{list_id}}" >Sign up here to save your lists.</a>

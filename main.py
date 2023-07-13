@@ -1,5 +1,7 @@
+from authlib.jose import jwt
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 from flask_sqlalchemy import SQLAlchemy
+from flask_redmail import RedMail
 from sqlalchemy.orm import relationship
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin, login_user, LoginManager, login_required, current_user, logout_user
@@ -7,6 +9,7 @@ from authlib.integrations.flask_client import OAuth
 from authlib.common.security import generate_token
 import datetime
 import os
+
 
 db = SQLAlchemy()
 app = Flask(__name__)
@@ -17,6 +20,12 @@ db.init_app(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
 OAuth = OAuth(app)
+app.config["EMAIL_HOST"] = "localhost"
+app.config["EMAIL_PORT"] = 587
+app.config["EMAIL_USERNAME"] = "me@example.com"
+app.config["EMAIL_PASSWORD"] = "<PASSWORD>"
+mail = RedMail(app)
+
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -40,6 +49,7 @@ class User(UserMixin, db.Model):
     password = db.Column(db.String(100))
     name = db.Column(db.String(100))
     login_with_google = db.Column(db.Boolean)
+    verified = db.Column(db.Boolean)
 
     all_lists = relationship("TodoList", back_populates="user")
     tasks = relationship("Todo", back_populates="user")
@@ -274,9 +284,20 @@ def register():
         user.name = request.form.get("name")
         user.password = hash_and_salted_password
         user.login_with_google = False
+        user.valid = False
         db.session.add(user)
         db.session.commit()
         login_user(user)
+        token = jwt.encode({"email": current_user.email}, app.config["SECRET_KEY"])
+        mail.send(
+            subject="Verify email",
+            receivers=current_user.email,
+            html_template="verification.html",
+            body_params={
+                "token": token
+            }
+        )
+
         if list_id is not None:
             list_to_add = db.get_or_404(TodoList, list_id)
             list_to_add.user = current_user
@@ -286,6 +307,62 @@ def register():
         return redirect(url_for("saved"))
     return render_template("register.html", is_dark=is_dark, current_user=current_user,
                            path=get_path(), list_id=list_id)
+
+
+@app.route("/forgot_password/", methods=["GET", "POST"])
+def forgot_password():
+    global is_dark
+    if request.method == "POST":
+        email = request.form.get("email")
+        token = jwt.encode({"email": current_user.email}, app.config["SECRET_KEY"])
+        if db.session.execute(db.select(User).filter_by(email=email)).scalar():
+            mail.send(
+                        subject="Verify email",
+                        receivers=current_user.email,
+                        html_template="reset_password.html",
+                        body_params={
+                            "token": token
+                        }
+                    )
+
+        else:
+            flash("That email does not exist, please try again.")
+            return redirect(url_for("forgot_password"))
+
+    return render_template("forgot_password.html", is_dark=is_dark, path=get_path())
+
+
+@app.route("/reset_password/<token>")
+def reset_password(token):
+    data = jwt.decode(token, app.config["SECRET_KEY"])
+    email = data["email"]
+
+    user = db.session.execute(db.select(User).filter_by(email=email)).scalar()
+    if request.method == "POST":
+
+        hash_and_salted_password = generate_password_hash(
+            request.form.get("password"),
+            method="pbkdf2:sha256",
+            salt_length=8
+        )
+
+        if request.form.get("password") != "":
+            user.password = hash_and_salted_password
+            db.session.commit()
+        return redirect("/login")
+    else:
+        return render_template("reset_password.html", token=token)
+
+
+@app.route("/verified/<token>")
+def verify_email(token):
+    data = jwt.decode(token, app.config["SECRET_KEY"])
+    email = data["email"]
+
+    user = db.session.execute(db.select(User).filter_by(email=email)).scalar()
+    user.verified = True
+    db.session.commit()
+    return render_template("verified.html")
 
 
 @app.route("/change_list_name/", methods=["POST"])
